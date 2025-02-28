@@ -1,0 +1,38 @@
+<div id="app">
+  <h1>Jogo de Tabuleiro</h1>
+  <!-- Jogadores -->
+  <div class="box" style="align-self: flex-start;">
+    <h2>Jogadores</h2>
+    <button id="add-player">Adicionar Jogador</button>
+    <ul id="players-list"></ul>
+  </div>
+  <!-- Atividades -->
+  <div class="box" style="align-self: flex-start;">
+    <h2>Atividades</h2>
+    <button id="add-activity">Adicionar Atividade</button>
+    <table id="activities-list">
+      <thead>
+        <tr>
+          <th>Atividade</th>
+          <th>Vezes Necessárias</th>
+          <th>Pontos</th>
+          <th>Data</th>
+          <th>Jogador</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <!-- Tabuleiro -->
+  <div class="box" style="align-self: flex-start;">
+    <h2>Tabuleiro</h2>
+    <div id="board-container"></div>
+  </div>
+  <!-- Seções de Registros dos Jogadores -->
+  <div id="player-sections" style="align-self: flex-start;"></div>
+  <!-- Botão para Reiniciar -->
+  <div style="text-align: left; margin-top: 20px; align-self: flex-start;">
+    <button id="reset-game">Reiniciar Jogo</button>
+  </div>
+</div>

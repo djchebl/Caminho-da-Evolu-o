@@ -1,0 +1,207 @@
+/* Variáveis Globais */
+:root {
+--primary-color: #4CAF50; /* Verde */
+--secondary-color: #FF9800; /* Laranja */
+--background-color: #f4f4f9; /* Fundo claro */
+--text-color: #333333; /* Texto escuro */
+--highlight-color: #FFEB3B; /* Amarelo para destaque */
+--box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+/* Estilos Globais */
+body {
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+background-color: var(--background-color);
+color: var(--text-color);
+line-height: 1.6;
+}
+#app {
+max-width: 800px;
+margin: 20px auto;
+margin-left: 100px;  
+display: grid;
+gap: 10px;
+padding: 20px;
+}
+.box {
+border: 1px solid #ccc;
+padding: 20px;
+border-radius: 12px;
+background-color: #fff;
+box-shadow: var(--box-shadow);
+transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.box:hover {
+transform: translateY(-5px);
+box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+h2 {
+color: var(--primary-color);
+font-size: 1.5rem;
+margin-bottom: 15px;
+text-align: center;
+}
+/* Tabuleiro */
+#board-container {
+display: flex;
+justify-content: center;
+margin-bottom: 20px;
+}
+#board {
+display: grid;
+grid-template-columns: repeat(11, 70px);
+grid-template-rows: repeat(2, 70px);
+gap: 12px;
+}
+.cell {
+width: 70px;
+height: 70px;
+border: 2px solid #000;
+display: flex;
+align-items: center;
+justify-content: center;
+position: relative;
+font-size: 14px;
+background-color: #e0f7fa;
+border-radius: 12px;
+transition: transform 0.2s, background-color 0.3s;
+}
+.cell:hover {
+transform: scale(1.1);
+background-color: #b2ebf2;
+}
+.piece {
+width: 50px;
+height: 50px;
+border-radius: 50%;
+position: absolute;
+border: 2px solid #fff;
+box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+transition: transform 0.3s ease;
+}
+.piece.red {
+background-color: #E53935;
+}
+.piece.blue {
+background-color: #1E88E5;
+}
+.piece.green {
+background-color: #43A047;
+}
+.piece.yellow {
+background-color: #FDD835;
+}
+.piece:hover {
+transform: scale(1.2);
+}
+/* Botões */
+button {
+margin-right: 10px;
+padding: 10px 20px;
+cursor: pointer;
+border: none;
+border-radius: 8px;
+background-color: var(--primary-color);
+color: white;
+font-weight: bold;
+font-size: 14px;
+transition: background-color 0.3s, transform 0.3s;
+}
+button:hover {
+background-color: #45A049;
+transform: scale(1.1);
+}
+button.icon-button {
+background: none;
+border: none;
+cursor: pointer;
+font-size: 18px;
+color: var(--primary-color);
+transition: color 0.3s;
+}
+button.icon-button:hover {
+color: #1070c9;
+}
+button.icon-button.remove {
+color: #ff4500;
+}
+button.icon-button.remove:hover {
+color: #d32f2f;
+}
+/* Tabelas */
+table {
+width: 100%;
+border-collapse: collapse;
+margin-top: 15px;
+font-size: 14px;
+max-height: 300px;
+overflow-y: auto;
+border: 1px solid #ddd;
+border-radius: 8px;
+box-shadow: var(--box-shadow);
+}
+table th,
+table td {
+border: 1px solid #ccc;
+padding: 10px;
+text-align: left;
+vertical-align: middle;
+}
+table th {
+background-color: var(--primary-color);
+color: white;
+font-weight: bold;
+}
+table tr:nth-child(even) {
+background-color: #f9f9f9;
+}
+table tr:hover {
+background-color: #f1f1f1;
+}
+/* Ícones */
+.icon-button {
+background: none;
+border: none;
+cursor: pointer;
+font-size: 18px;
+color: var(--primary-color);
+transition: color 0.3s;
+}
+.icon-button:hover {
+color: #1070c9;
+}
+/* Responsividade */
+@media (max-width: 768px) {
+#board {
+grid-template-columns: repeat(7, 50px);
+grid-template-rows: repeat(3, 50px);
+}
+.cell {
+width: 50px;
+height: 50px;
+}
+button {
+padding: 8px 12px;
+font-size: 12px;
+}
+}
+/* Centralizar conteúdo nas células de tabelas */
+table {
+width: 100%;
+border-collapse: collapse;
+text-align: center; /* Centraliza horizontalmente */
+}
+table th,
+table td {
+border: 1px solid #ddd;
+padding: 8px;
+vertical-align: middle; /* Centraliza verticalmente */
+text-align: center; /* Centraliza horizontalmente */
+}
+/* Centralizar cabeçalhos de tabelas */
+table th {
+background-color: var(--primary-color);
+color: white;
+font-weight: bold;
+}

@@ -1,0 +1,633 @@
+// Variáveis globais
+let players = [];
+let activities = [];
+let currentPlayerIndex = 0;
+
+// Carregar estado do localStorage
+function loadState() {
+  const savedState = localStorage.getItem('gameState');
+  if (savedState) {
+    try {
+      const state = JSON.parse(savedState);
+      players = state.players || [];
+      activities = state.activities || [];
+      currentPlayerIndex = state.currentPlayerIndex || 0;
+
+      // Inicializa o campo lastPlayer se não existir
+      activities.forEach(activity => {
+        if (!activity.completed) activity.completed = {};
+        if (activity.lastPlayer === undefined) activity.lastPlayer = null;
+      });
+
+      // Ordena as atividades em ordem alfabética
+      activities.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+      console.error('Erro ao carregar o estado:', error);
+    }
+  }
+}
+
+// Salvar estado no localStorage
+function saveState() {
+  const state = { players, activities, currentPlayerIndex };
+  localStorage.setItem('gameState', JSON.stringify(state));
+}
+
+// Criar o tabuleiro
+function createBoard() {
+  const board = document.getElementById('board-container');
+  board.innerHTML = ''; // Limpa o tabuleiro
+
+  const boardSize = 21; // Número total de casas no tabuleiro (1 a 21)
+
+  for (let i = 0; i < boardSize; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+
+    // Adiciona o número da casa (de 1 a 21)
+    const cellNumber = document.createElement('span');
+    cellNumber.textContent = i === 0 ? 'Início' : i + 1; // Casa 0 é rotulada como "Início"
+    cell.appendChild(cellNumber);
+
+    board.appendChild(cell);
+  }
+}
+
+// Renderizar as peças no tabuleiro
+function renderPieces() {
+  const board = document.getElementById('board-container');
+  if (!board) {
+    console.error('Elemento "board-container" não encontrado.');
+    return;
+  }
+
+  board.innerHTML = ''; // Limpa o tabuleiro
+
+  const boardSize = 21; // Número total de casas no tabuleiro (1 a 21)
+
+  for (let i = 0; i < boardSize; i++) {
+    const cell = document.createElement('div');
+    cell.classList.add('cell');
+
+    // Adiciona o número da casa (de 1 a 21)
+    const cellNumber = document.createElement('span');
+    cellNumber.textContent = i === 0 ? 'Início' : i + 1; // Casa 0 é rotulada como "Início"
+    cell.appendChild(cellNumber);
+
+    // Adiciona as peças dos jogadores
+    players.forEach((player, index) => {
+      if (player.position === i + 1) {
+        const piece = document.createElement('div');
+        piece.classList.add('piece', player.color);
+        piece.style.backgroundColor = player.color;
+        cell.appendChild(piece);
+      }
+    });
+
+    board.appendChild(cell);
+  }
+}
+
+// Mover o peão no tabuleiro
+function movePlayer(playerIndex, houses) {
+  const player = players[playerIndex];
+  player.position += houses;
+
+  // Garante que a posição não seja negativa
+  if (player.position < 0) player.position = 0;
+
+  // Renderiza as peças no tabuleiro
+  renderPieces();
+}
+
+// Atualizar lista de jogadores
+function updatePlayersList() {
+  const list = document.getElementById('players-list');
+  list.innerHTML = '';
+  players.forEach((player, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${player.name} (Games: ${player.games})`;
+    li.style.color = player.color;
+
+    const editButton = document.createElement('button');
+    editButton.classList.add('icon-button', 'edit');
+    editButton.innerHTML = '⚙';
+    editButton.onclick = () => editPlayer(index);
+
+    const removeButton = document.createElement('button');
+    removeButton.classList.add('icon-button', 'remove');
+    removeButton.innerHTML = '✖';
+    removeButton.onclick = () => removePlayer(index);
+
+    li.appendChild(editButton);
+    li.appendChild(removeButton);
+    list.appendChild(li);
+  });
+}
+
+// Criar seção de registros para um jogador
+function createPlayerSection(playerIndex) {
+  const player = players[playerIndex];
+  const playerSections = document.getElementById('player-sections');
+
+  const playerBox = document.createElement('div');
+  playerBox.classList.add('box');
+  playerBox.id = `player-${playerIndex}-section`;
+
+  const header = document.createElement('h2');
+  header.textContent = `Registro de ${player.name}`;
+  playerBox.appendChild(header);
+
+  // Adiciona os campos de estatísticas
+  const statsDiv = document.createElement('div');
+  statsDiv.classList.add('stats');
+  statsDiv.innerHTML = `
+    <p><strong>Atividades Concluídas:</strong> <span id="completed-activities-${playerIndex}">0</span></p>
+    <p><strong>Atividades Totais:</strong> <span id="total-activities-${playerIndex}">0</span></p>
+  `;
+  playerBox.appendChild(statsDiv);
+
+  const logsTable = document.createElement('table');
+  logsTable.innerHTML = `
+    <thead>
+      <tr>
+        <th>Atividade</th>
+        <th>Contagem</th>
+        <th>Data</th>
+        <th>Ação</th>
+      </tr>
+    </thead>
+    <tbody id="logs-${playerIndex}"></tbody>
+  `;
+  player.logsTable = logsTable;
+  playerBox.appendChild(logsTable);
+
+  playerSections.appendChild(playerBox);
+}
+
+// Atualizar seções de todos os jogadores
+function updatePlayerSections() {
+  const playerSections = document.getElementById('player-sections');
+  playerSections.innerHTML = '';
+  players.forEach((_, index) => createPlayerSection(index));
+  players.forEach((_, index) => updateLogs(index)); // Atualiza os registros de todos os jogadores
+}
+
+// Atualizar registros de atividades
+function updateLogs(playerIndex) {
+  const player = players[playerIndex];
+  const logsTableBody = document.querySelector(`#logs-${playerIndex}`);
+  logsTableBody.innerHTML = '';
+
+  // Calcula o total de atividades concluídas e totais
+  let completedActivitiesCount = 0; // Atividades concluídas
+  let totalActivitiesCount = 0; // Atividades totais
+
+  activities.forEach(activity => {
+    if (!activity.completed) {
+      activity.completed = {};
+    }
+
+    const playerLogs = activity.completed[player.name];
+    if (playerLogs) {
+      const count = playerLogs.dates.length || 0;
+
+      // Atividades concluídas (quantas vezes completou o número necessário)
+      completedActivitiesCount += Math.floor(count / activity.times);
+
+      // Atividades totais (soma de todas as contagens)
+      totalActivitiesCount += count;
+
+      const row = document.createElement('tr');
+
+      // Nome da atividade
+      const activityCell = document.createElement('td');
+      activityCell.textContent = activity.name;
+      row.appendChild(activityCell);
+
+      // Contagem (realizações feitas/vezes necessárias)
+      const countCell = document.createElement('td');
+      countCell.textContent = `${count}/${activity.times}`;
+      row.appendChild(countCell);
+
+      // Datas registradas
+      const datesCell = document.createElement('td');
+      const months = {};
+      playerLogs.dates.forEach(date => {
+        const [day, month] = date.split('/');
+        if (!months[month]) months[month] = [];
+        months[month].push(day);
+      });
+      const formattedDates = Object.keys(months)
+        .sort((a, b) => a - b)
+        .map(month => `${getMonthName(month)}: ${months[month].join(', ')}`)
+        .join('; ');
+      datesCell.textContent = formattedDates || 'Nenhuma data registrada';
+      row.appendChild(datesCell);
+
+      // Ações (editar/excluir)
+      const actionCell = document.createElement('td');
+      const editButton = document.createElement('button');
+      editButton.classList.add('icon-button', 'edit');
+      editButton.innerHTML = '⚙';
+      editButton.onclick = () => openEditDates(playerIndex, activity.name);
+
+      const removeButton = document.createElement('button');
+      removeButton.textContent = 'Excluir';
+      removeButton.onclick = () => openDateSelection(playerIndex, activity.name);
+
+      actionCell.appendChild(editButton);
+      actionCell.appendChild(removeButton);
+      row.appendChild(actionCell);
+
+      logsTableBody.appendChild(row);
+    }
+  });
+
+  // Atualiza os campos na interface
+  document.getElementById(`completed-activities-${playerIndex}`).textContent = completedActivitiesCount;
+  document.getElementById(`total-activities-${playerIndex}`).textContent = totalActivitiesCount;
+}
+
+// Obter nome do mês a partir do número
+function getMonthName(month) {
+  const months = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+  return months[parseInt(month, 10) - 1];
+}
+
+// Abrir edição de datas
+function openEditDates(playerIndex, activityName) {
+  const player = players[playerIndex];
+  const activity = activities.find(a => a.name === activityName);
+  if (!activity || !activity.completed[player.name]) {
+    alert('Atividade não encontrada ou sem registro para este jogador.');
+    return;
+  }
+
+  const currentDates = activity.completed[player.name].dates.join(', ');
+  const newDates = prompt('Editar datas (formato DD/MM, separadas por vírgula):', currentDates);
+  if (newDates) {
+    const datesArray = newDates.split(',').map(date => date.trim()).filter(isValidDate);
+    if (datesArray.length > 0) {
+      activity.completed[player.name].dates = datesArray;
+      activity.completed[player.name].count = datesArray.length; // Atualiza o contador com base nas novas datas
+
+      // Recalcula o posicionamento do peão e atualiza os campos
+      updateLogs(playerIndex);
+      saveState();
+    } else {
+      alert('Insira datas válidas no formato DD/MM.');
+    }
+  }
+}
+
+// Abrir seleção de datas para exclusão
+function openDateSelection(playerIndex, activityName) {
+  const player = players[playerIndex];
+  const activity = activities.find(a => a.name === activityName);
+
+  if (!activity || !activity.completed[player.name]) {
+    alert('Atividade não encontrada ou sem registro para este jogador.');
+    return;
+  }
+
+  const currentDates = activity.completed[player.name].dates;
+
+  if (currentDates.length === 0) {
+    alert('Nenhuma data registrada para esta atividade.');
+    return;
+  }
+
+  // Exibe as datas em uma lista enumerada
+  const enumeratedDates = currentDates
+    .map((date, index) => `${index + 1}: ${date}`)
+    .join('\n');
+
+  const selectedNumber = prompt(
+    `Selecione o número da data que deseja excluir:\n${enumeratedDates}`
+  );
+
+  // Verifica se o número selecionado é válido
+  const selectedIndex = parseInt(selectedNumber, 10) - 1; // Converte para índice base 0
+  if (!isNaN(selectedIndex) && selectedIndex >= 0 && selectedIndex < currentDates.length) {
+    const removedDate = currentDates[selectedIndex]; // Data removida
+
+    // Remove a data do array
+    activity.completed[player.name].dates = currentDates.filter((_, index) => index !== selectedIndex);
+
+    // Decrementa o contador de realizações
+    activity.completed[player.name].count--;
+
+    // Verifica se o jogador precisa retroceder
+    if (activity.completed[player.name].count < activity.times) {
+      movePlayer(playerIndex, -activity.value); // Retrocede o peão
+    }
+
+    // Recalcula os logs e salva o estado
+    updateLogs(playerIndex);
+    saveState();
+  } else {
+    alert('Número inválido ou fora do intervalo.');
+  }
+}
+
+// Atualizar lista de atividades
+function updateActivitiesList() {
+  const list = document.getElementById('activities-list');
+  list.innerHTML = ''; // Limpa a tabela antes de atualizar
+
+  // Ordena as atividades em ordem alfabética
+  activities.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Adiciona o cabeçalho da tabela
+  const headerRow = document.createElement('tr');
+  ['Atividade', 'Vezes Necessárias', 'Pontos', 'Data', 'Jogador', 'Ação'].forEach(headerText => {
+    const th = document.createElement('th');
+    th.textContent = headerText;
+    headerRow.appendChild(th);
+  });
+  list.appendChild(headerRow);
+
+  // Adiciona as linhas de atividades
+  activities.forEach((activity, index) => {
+    const row = document.createElement('tr');
+
+    const nameCell = document.createElement('td');
+    nameCell.textContent = activity.name;
+    row.appendChild(nameCell);
+
+    const timesCell = document.createElement('td');
+    timesCell.textContent = activity.times;
+    row.appendChild(timesCell);
+
+    const valueCell = document.createElement('td');
+    valueCell.textContent = activity.value;
+    row.appendChild(valueCell);
+
+    const dateCell = document.createElement('td');
+    const dateInput = document.createElement('input');
+    dateInput.type = 'text';
+    dateInput.placeholder = 'DD/MM (separados por vírgula)';
+    dateCell.appendChild(dateInput);
+    row.appendChild(dateCell);
+
+    const playerCell = document.createElement('td');
+    const playerSelect = document.createElement('select');
+    players.forEach((player, playerIndex) => {
+      const option = document.createElement('option');
+      option.value = playerIndex;
+      option.textContent = player.name;
+      playerSelect.appendChild(option);
+
+      // Define o jogador selecionado como o último jogador que interagiu
+      if (activity.lastPlayer === playerIndex) {
+        playerSelect.value = playerIndex;
+      }
+    });
+    playerCell.appendChild(playerSelect);
+    row.appendChild(playerCell);
+
+    const actionCell = document.createElement('td');
+    const markButton = document.createElement('button');
+    markButton.textContent = 'Marcar';
+    markButton.onclick = () => addActivityDate(index, playerSelect.value, dateInput.value);
+
+    const editButton = document.createElement('button');
+    editButton.classList.add('icon-button', 'edit');
+    editButton.innerHTML = '⚙';
+    editButton.onclick = () => editActivity(index);
+
+    const removeButton = document.createElement('button');
+    removeButton.classList.add('icon-button', 'remove');
+    removeButton.innerHTML = '✖';
+    removeButton.onclick = () => confirmRemoveActivity(index);
+
+    actionCell.appendChild(markButton);
+    actionCell.appendChild(editButton);
+    actionCell.appendChild(removeButton);
+    row.appendChild(actionCell);
+
+    list.appendChild(row);
+  });
+}
+
+// Marcar data de uma atividade
+function addActivityDate(activityIndex, playerIndex, datesInput) {
+  const dates = datesInput.split(',').map(date => date.trim()).filter(date => /^\d{2}\/\d{2}$/.test(date));
+  if (dates.length === 0) {
+    alert('Insira datas válidas no formato DD/MM (separadas por vírgula).');
+    return;
+  }
+
+  const activity = activities[activityIndex];
+  const player = players[playerIndex];
+
+  // Inicializa o registro do jogador para esta atividade, se necessário
+  if (!activity.completed[player.name]) {
+    activity.completed[player.name] = { count: 0, dates: [] };
+  }
+
+  // Adiciona as novas datas
+  dates.forEach(date => {
+    // Verifica se a data já existe
+    if (activity.completed[player.name].dates.includes(date)) {
+      const confirmAdd = confirm(`A data ${date} já foi registrada. Deseja adicioná-la novamente?`);
+      if (!confirmAdd) return; // Se o jogador cancelar, ignora esta data
+    }
+
+    // Adiciona a nova data
+    activity.completed[player.name].dates.push(date);
+
+    // Incrementa o contador de realizações
+    activity.completed[player.name].count++;
+  });
+
+  // Calcula o número total de realizações
+  const totalDates = activity.completed[player.name].dates.length;
+
+  // Verifica quantos conjuntos completos foram alcançados
+  const previousCompletedSets = Math.floor((totalDates - dates.length) / activity.times); // Conjuntos completos antes da adição
+  const newCompletedSets = Math.floor(totalDates / activity.times); // Conjuntos completos após a adição
+
+  if (newCompletedSets > previousCompletedSets) {
+    // Move o peão para frente
+    const housesToMoveForward = (newCompletedSets - previousCompletedSets) * activity.value;
+    movePlayer(playerIndex, housesToMoveForward);
+  }
+
+  // Atualiza os logs e salva o estado
+  updateActivitiesList();
+  updateLogs(playerIndex);
+  saveState();
+}
+
+// Editar atividade
+function editActivity(activityIndex) {
+  const activity = activities[activityIndex];
+  const oldName = activity.name; // Salva o nome antigo
+  const newName = prompt('Novo nome da atividade:', activity.name);
+  const newTimes = parseInt(prompt('Nova quantidade de vezes necessárias:', activity.times), 10);
+  const newValue = parseInt(prompt('Novo valor em casas:', activity.value), 10);
+
+  if (newName && !isNaN(newTimes) && !isNaN(newValue)) {
+    // Atualiza os registros dos jogadores com o novo nome da atividade
+    players.forEach(player => {
+      if (activity.completed[player.name] && oldName !== newName) {
+        activity.completed[newName] = activity.completed[oldName];
+        delete activity.completed[oldName];
+      }
+    });
+
+    // Atualiza os dados da atividade
+    activity.name = newName;
+    activity.times = newTimes;
+    activity.value = newValue;
+
+    // Atualiza a interface
+    updateActivitiesList(); // Atualiza a tabela de atividades
+    players.forEach((_, index) => updateLogs(index)); // Atualiza os registros de todos os jogadores
+    saveState();
+  }
+}
+
+// Confirmar exclusão de atividade
+function confirmRemoveActivity(activityIndex) {
+  if (confirm('Tem certeza que deseja excluir esta atividade?')) {
+    activities.splice(activityIndex, 1);
+    updateActivitiesList();
+    saveState();
+  }
+}
+
+// Editar jogador
+function editPlayer(playerIndex) {
+  const player = players[playerIndex];
+  
+  // Prompt para editar o nome do jogador
+  const newName = prompt('Novo nome do jogador:', player.name);
+  
+  // Prompt para editar o número de games
+  const newGames = parseInt(prompt('Novo número de games (pontos acumulados):', player.games), 10);
+
+  if (newName || !isNaN(newGames)) {
+    if (newName) player.name = newName; // Atualiza o nome, se fornecido
+    if (!isNaN(newGames)) player.games = newGames; // Atualiza os games, se válido
+
+    // Atualiza a interface
+    updatePlayersList();
+    updatePlayerSections();
+    saveState();
+  } else {
+    alert('Nome ou número de games inválido.');
+  }
+}
+
+// Remover jogador
+function removePlayer(playerIndex) {
+  if (confirm('Tem certeza que deseja remover este jogador?')) {
+    players.splice(playerIndex, 1);
+    updatePlayersList();
+    updatePlayerSections();
+    saveState();
+  }
+}
+
+// Validar datas
+function isValidDate(date) {
+  const regex = /^\d{2}\/\d{2}$/; // Formato DD/MM
+  if (!regex.test(date)) return false;
+
+  const [day, month] = date.split('/').map(Number);
+  if (month < 1 || month > 12) return false; // Mês válido entre 1 e 12
+  if (day < 1 || day > 31) return false; // Dia válido entre 1 e 31
+
+  // Verifica meses com 30 dias
+  if ([4, 6, 9, 11].includes(month) && day > 30) return false;
+
+  // Verifica fevereiro (máximo 29 dias)
+  if (month === 2 && day > 29) return false;
+
+  return true;
+}
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  createBoard();
+  renderPieces();
+  updatePlayersList();
+  updatePlayerSections();
+  updateActivitiesList();
+
+  // Configurar botão para adicionar jogador
+  document.getElementById('add-player').onclick = () => {
+    const name = prompt('Nome do jogador:');
+    if (name) addPlayer(name);
+  };
+
+  // Configurar botão para adicionar atividade
+  document.getElementById('add-activity').onclick = () => {
+    const name = prompt('Nome da atividade:');
+    const times = parseInt(prompt('Quantidade de vezes necessárias:'), 10);
+    const value = parseInt(prompt('Valor em casas:'), 10);
+    if (name && !isNaN(times) && !isNaN(value)) addActivity(name, times, value);
+  };
+
+  // Configurar botão para reiniciar o jogo
+  document.getElementById('reset-game').onclick = resetGame;
+});
+
+// Adicionar jogador
+function addPlayer(name) {
+  const colors = ['red', 'blue', 'green', 'yellow'];
+  if (players.length >= 4) {
+    alert('Máximo de 4 jogadores atingido.');
+    return;
+  }
+  players.push({
+    name,
+    position: 0, // Começa na casa 0
+    color: colors[players.length],
+    games: 0,
+    logs: {}
+  });
+  updatePlayersList();
+  createPlayerSection(players.length - 1);
+  saveState();
+}
+
+// Adicionar atividade global
+function addActivity(name, times, value) {
+  if (activities.some(activity => activity.name === name)) {
+    alert('Atividade já existe.');
+    return;
+  }
+
+  activities.push({ name, times, value, completed: {} });
+
+  // Ordena as atividades em ordem alfabética
+  activities.sort((a, b) => a.name.localeCompare(b.name));
+
+  updateActivitiesList();
+  saveState();
+}
+
+// Reiniciar o jogo
+function resetGame() {
+  if (confirm('Tem certeza que deseja reiniciar o jogo? Todos os dados serão perdidos.')) {
+    players = [];
+    activities = [];
+    currentPlayerIndex = 0;
+    localStorage.removeItem('gameState');
+    createBoard();
+    renderPieces();
+    updatePlayersList();
+    updatePlayerSections();
+
+    // Garante que as atividades estejam ordenadas
+    updateActivitiesList();
+  }
+}
